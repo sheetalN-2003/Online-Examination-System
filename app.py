@@ -1,74 +1,115 @@
 import streamlit as st
-import firebase_admin
-from firebase_admin import auth, db, firestore
-from firebase_config import db_firestore
+from utils.auth import login_page, signup_page, forgot_password_page, logout
+from utils.exam_utils import (
+    admin_dashboard, manage_users, manage_exams, view_results,
+    student_dashboard, take_exam, view_student_results, view_leaderboard
+)
+from firebase_config import is_firebase_initialized
 import time
-import datetime
-from utils.auth import *
-from utils.db_operations import *
-from utils.exam_utils import *
 
-# Page config
-st.set_page_config(page_title="Online Exam System", layout="wide")
+# App configuration
+st.set_page_config(
+    page_title="Online Exam System",
+    page_icon="📝",
+    layout="wide"
+)
 
-# Initialize session state
-if 'user' not in st.session_state:
-    st.session_state.user = None
-if 'user_role' not in st.session_state:
-    st.session_state.user_role = None
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = "home"
-
-# Main App
 def main():
+    # Check Firebase initialization
+    if not is_firebase_initialized():
+        st.error("Firebase initialization failed. Please check your configuration.")
+        return
+
+    # Session state initialization
+    if 'page' not in st.session_state:
+        st.session_state.page = "login"
+    
     # Navigation
-    if st.session_state.user is None:
-        show_auth_pages()
+    if 'user' in st.session_state:
+        # User is logged in - show appropriate dashboard
+        if st.session_state.user['role'] == 'admin':
+            show_admin_interface()
+        else:
+            show_student_interface()
     else:
-        show_main_pages()
+        # User is not logged in - show auth pages
+        show_auth_pages()
 
 def show_auth_pages():
-    """Show authentication pages (login, signup, forgot password)"""
-    pages = {
-        "Login": login_page,
-        "Sign Up": signup_page,
-        "Forgot Password": forgot_password_page
+    """Show authentication pages based on current page state"""
+    # Sidebar for auth navigation
+    st.sidebar.title("Online Exam System")
+    
+    # Page selection
+    if st.session_state.page == "login":
+        login_page()
+        if st.sidebar.button("Don't have an account? Sign up"):
+            st.session_state.page = "signup"
+            st.experimental_rerun()
+        if st.sidebar.button("Forgot password?"):
+            st.session_state.page = "forgot_password"
+            st.experimental_rerun()
+            
+    elif st.session_state.page == "signup":
+        signup_page()
+        if st.sidebar.button("Already have an account? Login"):
+            st.session_state.page = "login"
+            st.experimental_rerun()
+            
+    elif st.session_state.page == "forgot_password":
+        forgot_password_page()
+        if st.sidebar.button("Back to login"):
+            st.session_state.page = "login"
+            st.experimental_rerun()
+
+def show_admin_interface():
+    """Show admin dashboard and navigation"""
+    st.sidebar.title(f"Welcome, {st.session_state.user['display_name']}")
+    st.sidebar.subheader("Admin Dashboard")
+    
+    # Admin navigation
+    menu_options = {
+        "Dashboard": admin_dashboard,
+        "User Management": manage_users,
+        "Exam Management": manage_exams,
+        "View Results": view_results
     }
     
-    st.sidebar.title("Navigation")
-    selection = st.sidebar.radio("Go to", list(pages.keys()))
+    choice = st.sidebar.radio("Menu", list(menu_options.keys()))
     
-    # Display the selected page
-    pages[selection]()
-
-def show_main_pages():
-    """Show main pages based on user role"""
-    st.sidebar.title(f"Welcome, {st.session_state.user['email']}")
-    
-    if st.session_state.user_role == "admin":
-        admin_pages = {
-            "Dashboard": admin_dashboard,
-            "Manage Users": manage_users,
-            "Manage Exams": manage_exams,
-            "Results": view_results
-        }
-        selection = st.sidebar.radio("Go to", list(admin_pages.keys()))
-        admin_pages[selection]()
-    else:
-        student_pages = {
-            "Dashboard": student_dashboard,
-            "Take Exam": take_exam,
-            "Results": view_student_results,
-            "Leaderboard": view_leaderboard
-        }
-        selection = st.sidebar.radio("Go to", list(student_pages.keys()))
-        student_pages[selection]()
-    
+    # Logout button
     if st.sidebar.button("Logout"):
-        st.session_state.user = None
-        st.session_state.user_role = None
-        st.experimental_rerun()
+        logout()
+    
+    # Display selected page
+    menu_options[choice]()
 
-# Run the app
+def show_student_interface():
+    """Show student dashboard and navigation"""
+    st.sidebar.title(f"Welcome, {st.session_state.user['display_name']}")
+    st.sidebar.subheader("Student Dashboard")
+    
+    # Student navigation
+    menu_options = {
+        "Dashboard": student_dashboard,
+        "Take Exam": take_exam,
+        "My Results": view_student_results,
+        "Leaderboard": view_leaderboard
+    }
+    
+    # Special case for take exam page
+    if 'current_exam' in st.session_state:
+        take_exam()
+        return
+    
+    choice = st.sidebar.radio("Menu", list(menu_options.keys()))
+    
+    # Logout button
+    if st.sidebar.button("Logout"):
+        logout()
+    
+    # Display selected page
+    menu_options[choice]()
+
 if __name__ == "__main__":
     main()
