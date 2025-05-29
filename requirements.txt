@@ -1,4 +1,16 @@
 streamlit
 firebase-admin
 python-dotenv
+pytest
+pytest-cov
+python-dateutil
+pyopenssl
+cryptography
+google-cloud-firestore
+google-auth
+google-api-python-client
 pandas
+numpy
+plotly
+cachetools
+typing-extensions
