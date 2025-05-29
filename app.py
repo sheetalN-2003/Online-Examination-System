@@ -1,8 +1,15 @@
 import streamlit as st
 from utils.auth import login_page, signup_page, forgot_password_page, logout
 from utils.exam_utils import (
-    admin_dashboard, manage_users, manage_exams, view_results,
-    student_dashboard, take_exam, view_student_results, view_leaderboard
+    admin_dashboard, 
+    manage_users, 
+    manage_exams, 
+    view_results,  
+    student_dashboard, 
+    take_exam, 
+    view_student_results, 
+    view_leaderboard
+)
 )
 from firebase_config import is_firebase_initialized
 import time
