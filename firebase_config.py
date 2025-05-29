@@ -1,5 +1,5 @@
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore, auth
 import os
 from dotenv import load_dotenv
 
@@ -8,14 +8,15 @@ load_dotenv()
 
 # Global variable to track initialization
 _firebase_initialized = False
+_db = None
+_auth = None
 
 def initialize_firebase():
     """Initialize Firebase Admin SDK with environment variables"""
-    global _firebase_initialized
+    global _firebase_initialized, _db, _auth
     
-    # Return existing client if already initialized
     if _firebase_initialized:
-        return firestore.client()
+        return _db, _auth
 
     try:
         # Configuration using environment variables
@@ -42,28 +43,26 @@ def initialize_firebase():
         if not firebase_admin._apps:
             cred = credentials.Certificate(firebase_config)
             firebase_admin.initialize_app(cred, {
-                'databaseURL': os.getenv("FIREBASE_DATABASE_URL"),
-                'storageBucket': os.getenv("FIREBASE_STORAGE_BUCKET")
+                'databaseURL': os.getenv("FIREBASE_DATABASE_URL", ""),
+                'storageBucket': os.getenv("FIREBASE_STORAGE_BUCKET", "")
             })
-            _firebase_initialized = True
-
-        return firestore.client()
+        
+        _db = firestore.client()
+        _auth = auth
+        _firebase_initialized = True
+        
+        return _db, _auth
 
     except ValueError as ve:
         print(f"Configuration error: {ve}")
-        return None
+        return None, None
     except Exception as e:
         print(f"Error initializing Firebase: {e}")
-        return None
+        return None, None
 
-# Initialize Firebase and get Firestore client
-db_firestore = initialize_firebase()
+# Initialize Firebase and get Firestore client and auth
+db, auth = initialize_firebase()
 
-# Verification function to check initialization
 def is_firebase_initialized():
     """Check if Firebase was successfully initialized"""
-    try:
-        auth = firebase_admin.auth
-        return True
-    except:
-        return False
+    return _firebase_initialized
